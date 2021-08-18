@@ -83,10 +83,11 @@ namespace VegaTidy356_uploader
             */
 
             string version = "1.1.7";
-                        
+
             this.Text = "VegaTidy Uploader v" + version;
             
             mylogs.Logs("VegaTidy", "version: " + version);
+
 
 
 
