@@ -1,0 +1,86 @@
+
+
+SELECT * FROM `purchased_items` WHERE camprefix = 'TTH' AND imagenumber = '0003' AND bgnumber = '5555'
+
+
+
+// Joins the `purchased_items` record to a possible sale via the photo structure "camprefix, imagenumber, bgnumber"
+// via vega_356 database
+
+SELECT 
+purchased_items.pk_id AS lnk_to_purchased_items,
+purchased_items.sku, 
+purchased_items.order_id,
+purchase_order.operator_id,
+purchase_order.sales_action,
+purchase_order.purchase_date,
+purchase_order.purchase_order_number,
+purchase_order.softcopycode
+FROM `purchased_items` 
+JOIN purchase_order ON purchase_order.order_id = purchased_items.order_id 
+WHERE camprefix = 'TTH' AND imagenumber = '0003' AND bgnumber = '5555' ORDER BY `pk_id` ASC
+
+
+
+
+// via vega_stats database
+
+SELECT 
+purchased_items.pk_id AS lnk_to_purchased_items,
+purchased_items.sku, 
+purchased_items.order_id,
+purchase_order.operator_user,
+purchase_order.sales_action,
+purchase_order.purchase_date,
+purchase_order.purchase_order_number,
+purchase_order.softcopycode
+FROM `purchased_items` 
+JOIN purchase_order ON purchase_order.order_id = purchased_items.order_id 
+WHERE camprefix = 'TTH' AND imagenumber = '0003' AND bgnumber = '5555' ORDER BY `pk_id` ASC
+
+
+================
+
+// Access to order details via tag_id linked to photoname
+
+SELECT 
+purchased_items.pk_id AS lnk_to_purchased_items,
+purchased_items.sku, 
+tag_logs_data.tag_id,
+purchased_items.photo_names,
+purchased_items.order_id,
+purchase_order.operator_user,
+purchase_order.sales_action,
+purchase_order.purchase_date,
+purchase_order.purchase_order_number,
+purchase_order.softcopycode
+FROM `purchased_items` 
+JOIN purchase_order ON purchase_order.order_id = purchased_items.order_id 
+JOIN tag_logs_data ON tag_logs_data.photocode = SUBSTRING(purchased_items.photo_names FROM 1 FOR CHAR_LENGTH(purchased_items.photo_names) - 4)
+WHERE tag_logs_data.tag_id = 'LICENCE_TO_KILL'
+
+
+
+================
+
+// 
+
+SELECT * FROM `purchase_order` WHERE order_id = '696090'
+
+
+================
+
+
+Hi Will,
+
+Vegatidy update:
+
+I've added a table to `vegastats_test` on our server (also on my machine too). The table looks like:
+
+
+
+The only way I can think of linking the tag id information to the order is via a full photo name, for example: camprefix = 'TTH' AND imagenumber = '0003' AND bgnumber = '5555' 
+The only other way I can think of is, adding another field `tag_id` to vega's `purchased_items` table, which would then pass the tag_id from `incoming_photos` to `purchased_items` on a purchase. 
+
+
+
