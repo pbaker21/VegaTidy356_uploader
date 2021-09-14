@@ -74,16 +74,16 @@ class DBConnection
             //   0: Cannot connect to server.
             //1045: Invalid user name and/or password.
 
-            Console.WriteLine("SQL No. " + ex.Number);
+            Console.WriteLine("Local - SQL No. " + ex.Number);
 
             switch (ex.Number)
             {
                 case 0:
-                    Console.WriteLine("SQL Connection : Cannot connect to server.");
+                    Console.WriteLine("Local - SQL Connection : Cannot connect to server.");
                     break;
 
                 case 1045:
-                    Console.WriteLine("SQL Connection : Invalid username/password, please try again");
+                    Console.WriteLine("Local - SQL Connection : Invalid username/password, please try again");
                     break;
             }
             return false;
@@ -94,25 +94,27 @@ class DBConnection
 
 
 
+
     public void clearIncomingPhotos(string datelist)
     {
-        string query = "DELETE FROM `incoming_photos` WHERE DATE(incoming_photos.stamp) IN(@param_val_1)";
+        string query = @"DELETE FROM `incoming_photos` WHERE DATE(incoming_photos.stamp) IN(" + datelist + ")";
+
+          mylogs.Logs("clearIncomingPhotos query: ", query);
 
         //open connection
         if (this.OpenConnection() == true)
         {
             try
             {
-                MySqlCommand m = new MySqlCommand(query);
-                m.Parameters.AddWithValue("@param_val_1", datelist);                
-                m.ExecuteScalar();
+                MySqlCommand cmd = new MySqlCommand(query, connection);
 
+                cmd.ExecuteNonQuery();
+
+              //  mylogs.Logs("Local - clearIncomingPhotos: ", cmd.ToString());
             }
             catch (Exception ex)
             {
-                //Console.WriteLine(ex.ToString());
-
-                mylogs.Logs("clearIncomingPhotos - Err: ", ex.ToString());
+                mylogs.Logs("Local - clearIncomingPhotos - Err: ", ex.ToString());
             }
             //close connection
             this.CloseConnection();
@@ -121,14 +123,15 @@ class DBConnection
         clearTagsWaiting(datelist);
     }
 
-
-
     
+
+
+
+
 
     public void clearTagsWaiting(string datelist)
     {
         string query = "DELETE FROM `tags_waiting` WHERE DATE(tags_waiting.stamp) IN(" + datelist + ")";
-
 
         //open connection
         if (this.OpenConnection() == true)
@@ -141,9 +144,8 @@ class DBConnection
             }
             catch (Exception ex)
             {
-                //  Console.WriteLine(ex.ToString());
 
-                mylogs.Logs("clearTagsWaiting - Err: ", ex.ToString());
+                mylogs.Logs("Local - clearTagsWaiting - Err: ", ex.ToString());
             }
             //close connection
             this.CloseConnection();
@@ -162,9 +164,9 @@ class DBConnection
         if (!File.Exists(tagspath.Replace("\\", "/") + "backedup_tags_" + thedate + ".csv"))
         {
             // tags are backed up per todays date. This means if DATE(incoming_photos.stamp) = DATE(NOW()) then save all findings
-            string query_tags = @"SELECT pk_id, tag_user_id, (SELECT DISTINCT purchase_order.purchase_order_number FROM `purchased_items` JOIN purchase_order ON purchase_order.order_id = purchased_items.order_id WHERE photo_names = incoming_photos.photocode) AS purchase_order_number, SUBSTRING(photocode FROM 1 FOR CHAR_LENGTH(photocode) - 4) AS photo, prefix, photo_number, tag_id, tag_location, stamp FROM `incoming_photos` WHERE tag_id<> '' AND DATE(incoming_photos.stamp) = DATE(NOW()) INTO OUTFILE '" + tagspath.Replace("\\", "/") + "backedup_tags_" + thedate + ".csv' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\n'";
+            string query_tags = @"SELECT pk_id, tag_user_id, (SELECT DISTINCT purchase_order.purchase_order_number FROM `purchased_items` JOIN purchase_order ON purchase_order.order_id = purchased_items.order_id WHERE photo_names = incoming_photos.photocode) AS purchase_order_number, SUBSTRING(photocode FROM 1 FOR CHAR_LENGTH(photocode) - 4) AS photo, prefix, photo_number, tag_id, tag_location, stamp INTO OUTFILE '" + tagspath.Replace("\\", "/") + "backedup_tags_" + thedate + ".csv' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM `incoming_photos` WHERE tag_id<> '' AND DATE(incoming_photos.stamp) = DATE(NOW()); ";
 
-            mylogs.Logs("saveTagsCSV", query_tags);
+            mylogs.Logs("Local - saveTagsCSV", query_tags);
 
 
             //open connection
@@ -179,7 +181,7 @@ class DBConnection
                 catch (Exception ex)
                 {
                  
-                    mylogs.Logs("saveTagsCSV - Err: ", ex.ToString());
+                    mylogs.Logs("Local - saveTagsCSV - Err: ", ex.ToString());
                 }
                 //close connection
                 this.CloseConnection();

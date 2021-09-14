@@ -32,7 +32,7 @@ namespace VegaTidy356_uploader
         XmlDocument doc;
 
         string tagfiles_path;
-        string clear_tags_backup;
+      //  string clear_tags_backup;
         bool backup_to_server = false;
 
 
@@ -61,7 +61,7 @@ namespace VegaTidy356_uploader
                 <pword>1964Pib3</pword>
                 </database_remote>
             */
-            
+
             /*
              * Version 1.0.1 -- Added backedup csv tag file
              * Version 1.0.2 -- Added xml path for backedup csv tag file
@@ -80,9 +80,13 @@ namespace VegaTidy356_uploader
              * Version 1.1.5 -- Now changed to "VegaTidy356_uploader" from "VegaTidy356_xml". Now as a new project!
              * Version 1.1.6 -- testing to see if this loads on another Wondows 10 PC
              * Version 1.1.7 -- updated config xml with new instructions to handle tags. updated logs to produce daily logs (rather than one lump of logs)
+             * Version 1.1.8 -- updated mysql delete for function 'clearTagsWaiting'
+             * Version 1.1.9 -- message box for `test_local_connection`
+             * Version 1.2.0 -- made a small change to the saveTagsCSV SQL
+             * Version 1.2.1 -- added site_id to the `tag_logs_data` table
             */
 
-            string version = "1.1.7";
+            string version = "1.2.1";
 
             this.Text = "VegaTidy Uploader v" + version;
             
@@ -110,6 +114,12 @@ namespace VegaTidy356_uploader
                 db = new DBConnection(database_host, database_port, database_name, database_user, database_pword);
 
                 string source_result1 = db.test_local_connection();
+
+                if (source_result1 != "OK") {
+                    MessageBox.Show(source_result1, "Error: test_local_connection");
+                    //System.Windows.Forms.Application.Exit();
+                }
+
 
                 mysql_connection_msg.Text = source_result1;
 
@@ -317,7 +327,7 @@ namespace VegaTidy356_uploader
                 DataGridViewRow row = dataGridView.Rows[i];
                 string type_item    = row.Cells[0].Value.ToString();
                 string folder_name  = row.Cells[1].Value.ToString();
-                days_past       = Convert.ToInt32(row.Cells[2].Value);
+                days_past           = Convert.ToInt32(row.Cells[2].Value);
          
 
                 if (type_item == "folder" && IsDirectoryEmpty(folder_name))  // if the `type_item` is a folder and is not empty, then continue.
@@ -338,8 +348,7 @@ namespace VegaTidy356_uploader
                             dataGridView.Rows[i].Cells["Actioned"].Value = "✔"; // display a tick/check after each folder process actioned
                         }
                                                
-                    }
-                    else {
+                    } else {
                        // log("This is a folder but a normal type! : ", folder_name + " ==== " + containsDatedFolder(folder_name));
 
                         datecomma = clearDateSpecificFolders(folder_name, days_past);
@@ -375,9 +384,9 @@ namespace VegaTidy356_uploader
 
                 foreach (var mydata in data_inserts) // update remote/local database with tag inserts
                 {
-                    dbr.SaveRecord(mydata.fk_id, mydata.purchase_order_number, mydata.tag_user_id, mydata.photocode, mydata.prefix, mydata.photo_number, mydata.tag_id, mydata.tag_location, mydata.mystamp);
+                    dbr.SaveRecord(mydata.fk_id, mydata.site_id, mydata.purchase_order_number, mydata.tag_user_id, mydata.photocode, mydata.prefix, mydata.photo_number, mydata.tag_id, mydata.tag_location, mydata.mystamp);
                 }
-
+                
                 dbr.Close();
             }
           //  dataGridView.Rows[i].Cells["Actioned"].Value = "✔";
