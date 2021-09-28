@@ -32,11 +32,23 @@ namespace VegaTidy356_uploader
         XmlDocument doc;
 
         string tagfiles_path;
-      //  string clear_tags_backup;
         bool backup_to_server = false;
 
-
         LogClass mylogs = new LogClass();
+
+        private string database_host;
+        private string database_port;
+        private string database_name;
+        private string database_user;
+        private string database_pword;
+
+        private string database_remote_host;
+        private string database_remote_port;
+        private string database_remote_name;
+        private string database_remote_user;
+        private string database_remote_pword;
+
+
 
 
 
@@ -84,9 +96,11 @@ namespace VegaTidy356_uploader
              * Version 1.1.9 -- message box for `test_local_connection`
              * Version 1.2.0 -- made a small change to the saveTagsCSV SQL
              * Version 1.2.1 -- added site_id to the `tag_logs_data` table
+             * Version 1.2.2 -- make sure there is an SQL connection upon actioning an event
+             * Version 1.2.3 -- moved the saveTagsCSV function, to ensure it is triggered first before DELETING  the incomming files
             */
 
-            string version = "1.2.1";
+            string version = "1.2.3";
 
             this.Text = "VegaTidy Uploader v" + version;
             
@@ -105,33 +119,27 @@ namespace VegaTidy356_uploader
 
                 string database_root = "database_local/";
 
-                string database_host  = doc.DocumentElement.SelectSingleNode(database_root + "host").InnerText.Trim();
-                string database_port  = doc.DocumentElement.SelectSingleNode(database_root + "port").InnerText.Trim();
-                string database_name  = doc.DocumentElement.SelectSingleNode(database_root + "name").InnerText.Trim();
-                string database_user  = doc.DocumentElement.SelectSingleNode(database_root + "user").InnerText.Trim();
-                string database_pword = doc.DocumentElement.SelectSingleNode(database_root + "pword").InnerText.Trim();
+                database_host  = doc.DocumentElement.SelectSingleNode(database_root + "host").InnerText.Trim();
+                database_port  = doc.DocumentElement.SelectSingleNode(database_root + "port").InnerText.Trim();
+                database_name  = doc.DocumentElement.SelectSingleNode(database_root + "name").InnerText.Trim();
+                database_user  = doc.DocumentElement.SelectSingleNode(database_root + "user").InnerText.Trim();
+                database_pword = doc.DocumentElement.SelectSingleNode(database_root + "pword").InnerText.Trim();
 
                 db = new DBConnection(database_host, database_port, database_name, database_user, database_pword);
 
                 string source_result1 = db.test_local_connection();
-
-                if (source_result1 != "OK") {
-                    MessageBox.Show(source_result1, "Error: test_local_connection");
-                    //System.Windows.Forms.Application.Exit();
-                }
-
-
+                
                 mysql_connection_msg.Text = source_result1;
 
                 //=======================================================
                 
                 string database_remote_root = "database_remote/";   // mysql connecting to remote database
 
-                string database_remote_host  = doc.DocumentElement.SelectSingleNode(database_remote_root + "host").InnerText.Trim();
-                string database_remote_port  = doc.DocumentElement.SelectSingleNode(database_remote_root + "port").InnerText.Trim();
-                string database_remote_name  = doc.DocumentElement.SelectSingleNode(database_remote_root + "name").InnerText.Trim();
-                string database_remote_user  = doc.DocumentElement.SelectSingleNode(database_remote_root + "user").InnerText.Trim();
-                string database_remote_pword = doc.DocumentElement.SelectSingleNode(database_remote_root + "pword").InnerText.Trim();
+                database_remote_host  = doc.DocumentElement.SelectSingleNode(database_remote_root + "host").InnerText.Trim();
+                database_remote_port  = doc.DocumentElement.SelectSingleNode(database_remote_root + "port").InnerText.Trim();
+                database_remote_name  = doc.DocumentElement.SelectSingleNode(database_remote_root + "name").InnerText.Trim();
+                database_remote_user  = doc.DocumentElement.SelectSingleNode(database_remote_root + "user").InnerText.Trim();
+                database_remote_pword = doc.DocumentElement.SelectSingleNode(database_remote_root + "pword").InnerText.Trim();
 
                 dbr = new DBRemote(database_remote_host, database_remote_port, database_remote_name, database_remote_user, database_remote_pword);
 
@@ -249,7 +257,7 @@ namespace VegaTidy356_uploader
                         DateTime alarm = DateTime.ParseExact(scheduled_time, "H:m:s", null);
 
                         mylogs.Logs("Wake up time", "datetime:" + alarm.Hour + ":" + alarm.Minute);
-
+                                               
 
                         TaskScheduler.Instance.ScheduleTask(alarm.Hour, alarm.Minute, 24, () => {
 
@@ -294,6 +302,18 @@ namespace VegaTidy356_uploader
 
 
 
+        public bool IsConnectedLocally() {
+
+          //  db = new DBConnection(database_host, database_port, database_name, database_user, database_pword);
+
+            if (db.test_local_connection() != "OK") {
+                db = new DBConnection(database_host, database_port, database_name, database_user, database_pword);
+            }
+
+            return true;
+        }
+
+
 
 
         public static bool IsMatch(string input, string pattern)
@@ -320,6 +340,19 @@ namespace VegaTidy356_uploader
             string datecomma;
 
             int days_past = 0;
+
+            // make sure there is a connection (just incase there wasn't one when this program started or dropped out at some point)
+            db = new DBConnection(database_host, database_port, database_name, database_user, database_pword);
+
+            string source_result1 = db.test_local_connection();
+            
+            Invoke(new Action(() =>
+            {
+                mysql_connection_msg.Text = source_result1;
+            }));
+
+
+            db.saveTagsCSV(tagfiles_path); // save the tag CSV files to `tagfiles_location`
 
 
             for (int i = 0; i < dataGridView.Rows.Count; i++) // step through each table row for its settings
@@ -368,17 +401,28 @@ namespace VegaTidy356_uploader
 
             }// end for
 
-
-            
+                       
 
            // mylogs.Logs(" tagfiles_location >>>>>", tagfiles_path);
 
-            db.saveTagsCSV(tagfiles_path); // save the tag CSV files to `tagfiles_location`
+            //db.saveTagsCSV(tagfiles_path); // save the tag CSV files to `tagfiles_location`
             
 
             if (backup_to_server) // we'll back tags up to the server if this is TRUE
             {
                 var data_inserts = db.GetPhotoTagsList();
+
+                // make sure there is a connection (just incase there wasn't one when this program started or dropped out at some point)
+                dbr = new DBRemote(database_remote_host, database_remote_port, database_remote_name, database_remote_user, database_remote_pword);
+                
+                string source_result2 = db.test_local_connection();
+
+                Invoke(new Action(() =>
+                {
+                    remote_connection_msg.Text = source_result2;
+                }));
+
+
 
                 dbr.OpenConnection();
 
