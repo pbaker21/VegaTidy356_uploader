@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using MySql.Data.MySqlClient;
 
 /*
@@ -23,6 +24,8 @@ class DBConnection
     public DBConnection(string server, string port, string database, string user, string password)
     {
         string connectionString = @"SERVER=" + server + ";" + "PORT=" + port + ";" + "DATABASE=" + database + ";" + "UID=" + user + ";" + "PASSWORD=" + password + ";SslMode=none;";
+
+        //mylogs.Logs("SQL connectionString", connectionString);
 
         connection = new MySqlConnection(connectionString);
     }
@@ -157,17 +160,25 @@ class DBConnection
 
     
 
-    public void saveTagsCSV(string tagspath) // save (to file) a date range of tags with file name dated as todays date.
+    public string saveTagsCSV(string tagspath) // save (to file) a date range of tags with file name dated as todays date.
     {
         var thedate = DateTime.Now.ToString("yyyy-MM-dd");
 
-        if (!File.Exists(tagspath.Replace("\\", "/") + "backedup_tags_" + thedate + ".csv"))
+        var site_id = getSiteID();
+
+        var filename = site_id + "_backedup_tags_" + thedate + ".csv";
+
+        //mylogs.Logs("saveTagsCSV ", filename);
+
+
+        if (!File.Exists(tagspath.Replace("\\", "/") + filename))
         {
             // tags are backed up per todays date. This means if DATE(incoming_photos.stamp) = DATE(NOW()) then save all findings
-            string query_tags = @"SELECT pk_id, tag_user_id, (SELECT DISTINCT purchase_order.purchase_order_number FROM `purchased_items` JOIN purchase_order ON purchase_order.order_id = purchased_items.order_id WHERE photo_names = incoming_photos.photocode) AS purchase_order_number, SUBSTRING(photocode FROM 1 FOR CHAR_LENGTH(photocode) - 4) AS photo, prefix, photo_number, tag_id, tag_location, stamp INTO OUTFILE '" + tagspath.Replace("\\", "/") + "backedup_tags_" + thedate + ".csv' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM `incoming_photos` WHERE tag_id<> '' AND DATE(incoming_photos.stamp) = DATE(NOW()); ";
+            string query_tags = @"SELECT pk_id, (SELECT general_settings.current_site_id FROM `general_settings`) AS site_id, tag_user_id, (SELECT DISTINCT purchase_order.purchase_order_number FROM `purchased_items` JOIN purchase_order ON purchase_order.order_id = purchased_items.order_id WHERE photo_names = incoming_photos.photocode LIMIT 1) AS purchase_order_number, SUBSTRING(photocode FROM 1 FOR CHAR_LENGTH(photocode) - 4) AS photo, prefix, photo_number, tag_id, tag_location, stamp INTO OUTFILE '" + tagspath.Replace("\\", "/") + filename + "' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM `incoming_photos` WHERE tag_id<> '' AND DATE(incoming_photos.stamp) = DATE(NOW());";
 
             mylogs.Logs("Local - saveTagsCSV", query_tags);
 
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12;
 
             //open connection
             if (this.OpenConnection() == true)
@@ -175,21 +186,24 @@ class DBConnection
                 try
                 {
                     MySqlCommand cmd = new MySqlCommand(query_tags, connection);
+                                        
+                    cmd.CommandTimeout = 200;
 
                     cmd.ExecuteNonQuery();
                 }
                 catch (Exception ex)
-                {
-                 
+                {                 
                     mylogs.Logs("Local - saveTagsCSV - Err: ", ex.ToString());
                 }
-                //close connection
+                
                 this.CloseConnection();
             }
         }
         else {
-            mylogs.Logs("saveTagsCSV:Error file exists", thedate);
+            mylogs.Logs("saveTagsCSV:Error file already exists", thedate);
         }
+
+        return filename;
     }
 
 
@@ -197,7 +211,6 @@ class DBConnection
 
 
     //tags_backup
-
 
     public void clearTaggedPhotos(string datelist)
     {
@@ -232,12 +245,13 @@ class DBConnection
     public List<DataInserts> GetPhotoTagsList()    // create or update todays new list of photos
     {
         List<DataInserts> data = new List<DataInserts>();
+
         int days = 0;
 
 
         if (this.OpenConnection() == true)
         {
-            var myquery = "SELECT pk_id, (SELECT general_settings.current_site_id FROM `general_settings`) AS site_id, (SELECT DISTINCT purchase_order.purchase_order_number FROM `purchased_items` JOIN purchase_order ON purchase_order.order_id = purchased_items.order_id WHERE photo_names = incoming_photos.photocode) AS purchase_order_number, tag_user_id, SUBSTRING(photocode FROM 1 FOR CHAR_LENGTH(photocode) - 4) AS photo, prefix, photo_number, tag_id, tag_location, DATE_FORMAT(stamp,\"%Y-%m-%d %H:%i:%s\") AS mystamp FROM `incoming_photos` WHERE tag_id<> '' AND DATE(incoming_photos.stamp) <= DATE_ADD(CURDATE(), INTERVAL - " + days + "  DAY);";
+            var myquery = "SELECT pk_id, (SELECT general_settings.current_site_id FROM `general_settings`) AS site_id, (SELECT DISTINCT purchase_order.purchase_order_number FROM `purchased_items` JOIN purchase_order ON purchase_order.order_id = purchased_items.order_id WHERE photo_names = incoming_photos.photocode LIMIT 1) AS purchase_order_number, tag_user_id, SUBSTRING(photocode FROM 1 FOR CHAR_LENGTH(photocode) - 4) AS photo, prefix, photo_number, tag_id, tag_location, DATE_FORMAT(stamp,\"%Y-%m-%d %H:%i:%s\") AS mystamp FROM `incoming_photos` WHERE tag_id<> '' AND DATE(incoming_photos.stamp) <= DATE_ADD(CURDATE(), INTERVAL - " + days + "  DAY);";
 
             mylogs.Logs("SQL GetPhotoTagsList", myquery);
 
@@ -272,12 +286,40 @@ class DBConnection
             this.CloseConnection();
 
             return data;
+    }
+
+
+
+
+
+    public string getSiteID() { // gett he current site id code/name
+
+        string site_id = "";
+
+        if (this.OpenConnection() == true)
+        {
+            var myquery = "SELECT general_settings.current_site_id AS site_id FROM `general_settings`";
+
+            mylogs.Logs("SQL getSiteID", myquery);
+
+            using (MySqlCommand cmd = new MySqlCommand(myquery, connection))
+            {
+                using (MySqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            site_id = reader["site_id"].ToString();
+                        }
+                    }
+                }
+            }
+            connection.Close();
         }
-
-  
-
-
-
+        return site_id;
+        
+    }
 
 
 

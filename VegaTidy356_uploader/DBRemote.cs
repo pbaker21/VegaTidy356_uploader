@@ -116,7 +116,10 @@ class DBRemote
                     }
                     catch (MySqlException e)
                     {
-                        mylogs.Logs("SQL SaveRecord Error", e.Number.ToString() + " -> " + e.Message.ToString());
+                        if(e.Number != 1062) // 1062 = Duplicate entry error
+                    { 
+                            mylogs.Logs("SQL SaveRecord Error", e.Number.ToString() + " -> " + e.Message.ToString());
+                        }   
                     }
                 }            
         }

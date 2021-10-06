@@ -8,17 +8,17 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
-
+using Renci.SshNet;
 
 
 
 namespace VegaTidy356_uploader
 {
-    
+
     public partial class Form1 : Form
     {
         private DBConnection db;
-        private DBRemote dbr;
+      //  private DBRemote dbr;
         
 
         public string xml_path = System.IO.Path.GetDirectoryName(Application.ExecutablePath) + "/";
@@ -42,12 +42,13 @@ namespace VegaTidy356_uploader
         private string database_user;
         private string database_pword;
 
+        /*
         private string database_remote_host;
         private string database_remote_port;
         private string database_remote_name;
         private string database_remote_user;
         private string database_remote_pword;
-
+        */
 
 
 
@@ -98,9 +99,12 @@ namespace VegaTidy356_uploader
              * Version 1.2.1 -- added site_id to the `tag_logs_data` table
              * Version 1.2.2 -- make sure there is an SQL connection upon actioning an event
              * Version 1.2.3 -- moved the saveTagsCSV function, to ensure it is triggered first before DELETING  the incomming files
+             * Version 1.2.4 -- added 'limit 1' to the saveTagsCSV db function
+             * Version 1.2.5 -- added FTP for tag log file. This will upload to our server after the  tag log file is saved.
+             * Version 1.2.6 -- disabled remote DB. Enabled FTPs uploading. Added site name prefix to the upload file name and added extra site name field to CSV
             */
 
-            string version = "1.2.3";
+            string version = "1.2.6";
 
             this.Text = "VegaTidy Uploader v" + version;
             
@@ -132,7 +136,7 @@ namespace VegaTidy356_uploader
                 mysql_connection_msg.Text = source_result1;
 
                 //=======================================================
-                
+                /*
                 string database_remote_root = "database_remote/";   // mysql connecting to remote database
 
                 database_remote_host  = doc.DocumentElement.SelectSingleNode(database_remote_root + "host").InnerText.Trim();
@@ -146,7 +150,8 @@ namespace VegaTidy356_uploader
                 string source_result2 = dbr.test_remote_connection();
 
                 remote_connection_msg.Text = source_result2;
-
+                */
+                remote_connection_msg.Text = "n/a";
                 //=======================================================
 
                 tagfiles_path = checkForSlash(doc.DocumentElement.SelectSingleNode("tags_path").InnerText.Trim());
@@ -210,7 +215,7 @@ namespace VegaTidy356_uploader
                 dataGridView.Columns["Actioned"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
                 //==========================================================================================================================
-
+                
                 //clear folders
                 elemList = doc.GetElementsByTagName("clear_item");
 
@@ -304,8 +309,6 @@ namespace VegaTidy356_uploader
 
         public bool IsConnectedLocally() {
 
-          //  db = new DBConnection(database_host, database_port, database_name, database_user, database_pword);
-
             if (db.test_local_connection() != "OK") {
                 db = new DBConnection(database_host, database_port, database_name, database_user, database_pword);
             }
@@ -352,7 +355,17 @@ namespace VegaTidy356_uploader
             }));
 
 
-            db.saveTagsCSV(tagfiles_path); // save the tag CSV files to `tagfiles_location`
+
+            /// deal with tags
+            var fn = db.saveTagsCSV(tagfiles_path); // save the tag CSV files to `tagfiles_location`
+            
+            if (backup_to_server) // we'll back tags up to the server if this is TRUE
+            {
+                 mylogs.Logs("#UploadFileToFTP = ", "backup_to_server");
+                UploadFileToFTP(tagfiles_path, fn);
+            }
+
+            
 
 
             for (int i = 0; i < dataGridView.Rows.Count; i++) // step through each table row for its settings
@@ -401,40 +414,7 @@ namespace VegaTidy356_uploader
 
             }// end for
 
-                       
-
-           // mylogs.Logs(" tagfiles_location >>>>>", tagfiles_path);
-
-            //db.saveTagsCSV(tagfiles_path); // save the tag CSV files to `tagfiles_location`
-            
-
-            if (backup_to_server) // we'll back tags up to the server if this is TRUE
-            {
-                var data_inserts = db.GetPhotoTagsList();
-
-                // make sure there is a connection (just incase there wasn't one when this program started or dropped out at some point)
-                dbr = new DBRemote(database_remote_host, database_remote_port, database_remote_name, database_remote_user, database_remote_pword);
-                
-                string source_result2 = db.test_local_connection();
-
-                Invoke(new Action(() =>
-                {
-                    remote_connection_msg.Text = source_result2;
-                }));
-
-
-
-                dbr.OpenConnection();
-
-                foreach (var mydata in data_inserts) // update remote/local database with tag inserts
-                {
-                    dbr.SaveRecord(mydata.fk_id, mydata.site_id, mydata.purchase_order_number, mydata.tag_user_id, mydata.photocode, mydata.prefix, mydata.photo_number, mydata.tag_id, mydata.tag_location, mydata.mystamp);
-                }
-                
-                dbr.Close();
-            }
-          //  dataGridView.Rows[i].Cells["Actioned"].Value = "✔";
-
+          
         }
 
 
@@ -494,7 +474,6 @@ namespace VegaTidy356_uploader
 
                         datecomma += "'" + to_sql_date + "',";  // build a list of directories being deleted
                     }
-
                 }
             }
 
@@ -563,7 +542,7 @@ namespace VegaTidy356_uploader
 
                 if (dirs.Length == 0 && files.Length == 0) { 
                         return false;
-                }else { 
+                }else{ 
                         return true;
                 }
             }
@@ -659,8 +638,7 @@ namespace VegaTidy356_uploader
             int yy = Convert.ToInt32(y);
             int mm = Convert.ToInt32(m);
             int dd = Convert.ToInt32(d);
-
-
+            
             string path = @"C:\xampp\htdocs\vega_356\archives\error_logs_" + filedate + ".txt";
 
             if (!File.Exists(path))
@@ -673,9 +651,73 @@ namespace VegaTidy356_uploader
                 File.SetCreationTime(path, new DateTime(yy, mm, dd));
             }
 
-
             //Console.WriteLine("^ " + path + " = " + yy+"-"+ mm + "-" + dd);
         }
+
+
+
+        
+
+
+        //
+        // To be used inconjunction with - C:\xampp\htdocs\process_tag_logs\
+        //
+        private void UploadFileToFTP(string filePath, string fileName)
+        {/*
+            SftpClient sftp = new SftpClient("crazygeek.co.uk", "crazygee", "Morning~Summer2");
+            var directory = "public_html/csv_backups/"; // ftp upload path
+            */
+
+            SftpClient sftp = new SftpClient("photo.imageinsight.com", "iicom", "Pc5%ij69");
+
+            var directory = "/var/www/vhosts/imageinsight.com/photo.imageinsight.com/tag_logs_backup_files/incoming_tag_files/";
+           
+            sftp.KeepAliveInterval = TimeSpan.FromSeconds(60);
+            //sftp.ConnectionInfo.Timeout = TimeSpan.FromMinutes(180);
+            sftp.ConnectionInfo.Timeout = TimeSpan.FromSeconds(120);
+            sftp.OperationTimeout = TimeSpan.FromMinutes(180);
+
+            try
+            {
+                sftp.Connect(); // lets try and connect
+            
+                if (sftp.IsConnected) // we have a connection
+                {
+                    sftp.ChangeDirectory(directory); // ChangeDirectory to our server path, where we're uploading the files to.
+
+                    try
+                    {
+                        using (FileStream filestream = File.OpenRead(filePath + fileName))
+                        {
+                            sftp.UploadFile(filestream, fileName, null); 
+                            sftp.Disconnect();
+                            sftp.Dispose();
+                        }
+                        mylogs.Logs("UploadFileToFTP:", fileName);
+                    }
+                    catch (FileNotFoundException ex)
+                    {
+                        mylogs.Logs("UploadFileToFTP: FileNotFoundException", ex.ToString());
+                        sftp.Disconnect();
+                    }
+                }
+                else
+                {
+                    mylogs.Logs("UploadFileToFTP: Connect", "Did not connect.");
+                    sftp.Disconnect();
+                }            
+            }
+            catch (Exception ex)
+            {
+                sftp.Disconnect();
+
+                mylogs.Logs("UploadFileToFTP: Could not connect to host: ", ex.Message.ToString());
+            }
+            
+        }
+
+
+
 
 
 
