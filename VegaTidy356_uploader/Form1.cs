@@ -9,8 +9,9 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using Renci.SshNet;
-
-
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace VegaTidy356_uploader
 {
@@ -18,9 +19,7 @@ namespace VegaTidy356_uploader
     public partial class Form1 : Form
     {
         private DBConnection db;
-      //  private DBRemote dbr;
-        
-
+      
         public string xml_path = System.IO.Path.GetDirectoryName(Application.ExecutablePath) + "/";
 
         DataTable table = new DataTable();
@@ -42,15 +41,8 @@ namespace VegaTidy356_uploader
         private string database_user;
         private string database_pword;
 
-        /*
-        private string database_remote_host;
-        private string database_remote_port;
-        private string database_remote_name;
-        private string database_remote_user;
-        private string database_remote_pword;
-        */
 
-
+      //  private Aes256CbcEncrypter En;
 
 
         public Form1()
@@ -102,9 +94,11 @@ namespace VegaTidy356_uploader
              * Version 1.2.4 -- added 'limit 1' to the saveTagsCSV db function
              * Version 1.2.5 -- added FTP for tag log file. This will upload to our server after the  tag log file is saved.
              * Version 1.2.6 -- disabled remote DB. Enabled FTPs uploading. Added site name prefix to the upload file name and added extra site name field to CSV
+             * Version 1.2.7 -- On startup it creates a log "folder" for the log files to go in
+             * Version 1.2.8 -- added IsFileReady check when uploading files to server. This is to ensure the tags log file has been fully created & available before attempting to upload!
             */
 
-            string version = "1.2.6";
+            string version = "1.2.8";
 
             this.Text = "VegaTidy Uploader v" + version;
             
@@ -129,6 +123,10 @@ namespace VegaTidy356_uploader
                 database_user  = doc.DocumentElement.SelectSingleNode(database_root + "user").InnerText.Trim();
                 database_pword = doc.DocumentElement.SelectSingleNode(database_root + "pword").InnerText.Trim();
 
+               //database_pword = Aes256CbcEncrypter.Decrypt(database_pword, Key);
+               //Console.WriteLine("^^ " + database_pword);
+
+
                 db = new DBConnection(database_host, database_port, database_name, database_user, database_pword);
 
                 string source_result1 = db.test_local_connection();
@@ -136,31 +134,14 @@ namespace VegaTidy356_uploader
                 mysql_connection_msg.Text = source_result1;
 
                 //=======================================================
-                /*
-                string database_remote_root = "database_remote/";   // mysql connecting to remote database
-
-                database_remote_host  = doc.DocumentElement.SelectSingleNode(database_remote_root + "host").InnerText.Trim();
-                database_remote_port  = doc.DocumentElement.SelectSingleNode(database_remote_root + "port").InnerText.Trim();
-                database_remote_name  = doc.DocumentElement.SelectSingleNode(database_remote_root + "name").InnerText.Trim();
-                database_remote_user  = doc.DocumentElement.SelectSingleNode(database_remote_root + "user").InnerText.Trim();
-                database_remote_pword = doc.DocumentElement.SelectSingleNode(database_remote_root + "pword").InnerText.Trim();
-
-                dbr = new DBRemote(database_remote_host, database_remote_port, database_remote_name, database_remote_user, database_remote_pword);
-
-                string source_result2 = dbr.test_remote_connection();
-
-                remote_connection_msg.Text = source_result2;
-                */
-                remote_connection_msg.Text = "n/a";
-                //=======================================================
-
+                
                 tagfiles_path = checkForSlash(doc.DocumentElement.SelectSingleNode("tags_path").InnerText.Trim());
 
                 string tags_root = "tags_action/";
                                
                 backup_to_server  = Convert.ToBoolean(doc.DocumentElement.SelectSingleNode(tags_root + "backup_to_server").InnerText);
 
-                mylogs.Logs("backup tags to server", backup_to_server.ToString());
+                mylogs.Logs("Backup tags to server", "Status: " + backup_to_server.ToString());
                 
 
                 //=======================================================
@@ -251,17 +232,16 @@ namespace VegaTidy356_uploader
 
                 //==========================================================================================================================
                 
-
                 if (IsMatch(event_status, "^(daily)|(once)+$"))
                 {
-                    mylogs.Logs("trigger_event", "event_status: " + event_status);
+                    mylogs.Logs("Trigger event type", "Status: " + event_status);
+
 
                     if (event_status == "daily") // trigger everyday at `scheduled_time`
-                    {
-                      
+                    {                      
                         DateTime alarm = DateTime.ParseExact(scheduled_time, "H:m:s", null);
 
-                        mylogs.Logs("Wake up time", "datetime:" + alarm.Hour + ":" + alarm.Minute);
+                        mylogs.Logs("Process Start Time", alarm.ToString());
                                                
 
                         TaskScheduler.Instance.ScheduleTask(alarm.Hour, alarm.Minute, 24, () => {
@@ -358,14 +338,26 @@ namespace VegaTidy356_uploader
 
             /// deal with tags
             var fn = db.saveTagsCSV(tagfiles_path); // save the tag CSV files to `tagfiles_location`
-            
+
+            int attempts = 0;
+
+
             if (backup_to_server) // we'll back tags up to the server if this is TRUE
             {
-                 mylogs.Logs("#UploadFileToFTP = ", "backup_to_server");
-                UploadFileToFTP(tagfiles_path, fn);
+                mylogs.Logs("#UploadFileToFTP = ", "upload file : " + fn + " ~~ " + tagfiles_path);
+
+                while (!IsFileReady(tagfiles_path + fn) && attempts < 5)
+                {
+                    attempts++;
+
+                    mylogs.Logs("Waiting to upload file (" + attempts + ") : ", tagfiles_path + fn);
+
+                    Thread.Sleep(1000);
+                }
+
+                UploadFileToFTP(tagfiles_path, fn);                
             }
 
-            
 
 
             for (int i = 0; i < dataGridView.Rows.Count; i++) // step through each table row for its settings
@@ -720,6 +712,24 @@ namespace VegaTidy356_uploader
 
 
 
+        private bool IsFileReady(string filename)
+        {
+            // If the file can be opened for exclusive access it means that the file
+            // is no longer locked by another process.
+            try
+            {
+                using (FileStream inputStream = File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.None))
+                return inputStream.Length > 0;
+            }
+            catch (Exception ex)
+            {
+                mylogs.Logs("IsFileReady: Err ", ex.Message.ToString());
+
+                return false;
+            }
+        }
+
+        
 
 
 

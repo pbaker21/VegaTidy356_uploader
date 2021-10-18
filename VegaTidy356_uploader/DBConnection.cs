@@ -10,13 +10,13 @@ using MySql.Data.MySqlClient;
 
 
 
-class DBConnection
+class DBConnection 
 {
     private MySqlConnection connection;
 
     //public LogClass mylogs;
     LogClass mylogs = new LogClass();
-
+    
 
 
 
@@ -102,7 +102,7 @@ class DBConnection
     {
         string query = @"DELETE FROM `incoming_photos` WHERE DATE(incoming_photos.stamp) IN(" + datelist + ")";
 
-          mylogs.Logs("clearIncomingPhotos query: ", query);
+        mylogs.Logs("clearIncomingPhotos query: ", query);
 
         //open connection
         if (this.OpenConnection() == true)
@@ -187,7 +187,7 @@ class DBConnection
                 {
                     MySqlCommand cmd = new MySqlCommand(query_tags, connection);
                                         
-                    cmd.CommandTimeout = 200;
+                    cmd.CommandTimeout = 60;
 
                     cmd.ExecuteNonQuery();
                 }
@@ -240,14 +240,12 @@ class DBConnection
 
 
 
-    
-
+    /*
     public List<DataInserts> GetPhotoTagsList()    // create or update todays new list of photos
     {
         List<DataInserts> data = new List<DataInserts>();
 
         int days = 0;
-
 
         if (this.OpenConnection() == true)
         {
@@ -287,12 +285,12 @@ class DBConnection
 
             return data;
     }
+    */
 
 
 
 
-
-    public string getSiteID() { // gett he current site id code/name
+    public string getSiteID() { // gets the current site id code/name
 
         string site_id = "";
 
@@ -317,8 +315,8 @@ class DBConnection
             }
             connection.Close();
         }
+
         return site_id;
-        
     }
 
 

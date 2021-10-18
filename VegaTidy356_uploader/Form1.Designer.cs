@@ -35,8 +35,6 @@
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.label2 = new System.Windows.Forms.Label();
             this.scheduled = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.remote_connection_msg = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
@@ -47,15 +45,15 @@
             this.label1.Location = new System.Drawing.Point(24, 11);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(117, 16);
+            this.label1.Size = new System.Drawing.Size(150, 16);
             this.label1.TabIndex = 0;
-            this.label1.Text = "SQL Local           :";
+            this.label1.Text = "SQL Local Connection  :";
             // 
             // mysql_connection_msg
             // 
             this.mysql_connection_msg.AutoSize = true;
             this.mysql_connection_msg.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.mysql_connection_msg.Location = new System.Drawing.Point(137, 11);
+            this.mysql_connection_msg.Location = new System.Drawing.Point(174, 13);
             this.mysql_connection_msg.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.mysql_connection_msg.Name = "mysql_connection_msg";
             this.mysql_connection_msg.Size = new System.Drawing.Size(96, 13);
@@ -72,17 +70,17 @@
             this.dataGridView.Margin = new System.Windows.Forms.Padding(4);
             this.dataGridView.Name = "dataGridView";
             this.dataGridView.ReadOnly = true;
-            this.dataGridView.Size = new System.Drawing.Size(701, 211);
+            this.dataGridView.Size = new System.Drawing.Size(701, 236);
             this.dataGridView.TabIndex = 2;
             // 
             // groupBox1
             // 
             this.groupBox1.Controls.Add(this.dataGridView);
-            this.groupBox1.Location = new System.Drawing.Point(13, 102);
+            this.groupBox1.Location = new System.Drawing.Point(13, 71);
             this.groupBox1.Margin = new System.Windows.Forms.Padding(4);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Padding = new System.Windows.Forms.Padding(4);
-            this.groupBox1.Size = new System.Drawing.Size(715, 241);
+            this.groupBox1.Size = new System.Drawing.Size(715, 268);
             this.groupBox1.TabIndex = 3;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "List of folders/files to process :";
@@ -90,7 +88,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(24, 69);
+            this.label2.Location = new System.Drawing.Point(24, 38);
             this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(114, 16);
@@ -101,41 +99,18 @@
             // 
             this.scheduled.AutoSize = true;
             this.scheduled.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.scheduled.Location = new System.Drawing.Point(136, 71);
+            this.scheduled.Location = new System.Drawing.Point(136, 40);
             this.scheduled.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.scheduled.Name = "scheduled";
             this.scheduled.Size = new System.Drawing.Size(61, 13);
             this.scheduled.TabIndex = 5;
             this.scheduled.Text = "timeofday";
             // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(24, 40);
-            this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(115, 16);
-            this.label3.TabIndex = 6;
-            this.label3.Text = "SQL Remote       :";
-            // 
-            // remote_connection_msg
-            // 
-            this.remote_connection_msg.AutoSize = true;
-            this.remote_connection_msg.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.remote_connection_msg.Location = new System.Drawing.Point(138, 40);
-            this.remote_connection_msg.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.remote_connection_msg.Name = "remote_connection_msg";
-            this.remote_connection_msg.Size = new System.Drawing.Size(96, 13);
-            this.remote_connection_msg.TabIndex = 7;
-            this.remote_connection_msg.Text = "Not Connected!";
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(745, 352);
-            this.Controls.Add(this.remote_connection_msg);
-            this.Controls.Add(this.label3);
             this.Controls.Add(this.scheduled);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.groupBox1);
@@ -163,8 +138,6 @@
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label scheduled;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label remote_connection_msg;
     }
 }
 
